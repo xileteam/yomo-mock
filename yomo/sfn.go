@@ -3,6 +3,7 @@ package yomo
 import (
 	"log"
 	"net"
+	"net/url"
 	"strings"
 )
 
@@ -16,7 +17,12 @@ func NewSfn() Sfn {
 }
 
 func (s *SfnImpl) Connect(name string, zipperAddr string) error {
-	listener, err := net.Listen("unix", "/tmp/yomo.sock")
+	u, err := url.Parse(zipperAddr)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	listener, err := net.Listen(u.Scheme, u.Path)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}

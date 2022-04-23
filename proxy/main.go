@@ -3,12 +3,13 @@ package main
 import (
 	"log"
 	"net"
+	"ys5-mock/utils"
 	"ys5-mock/yomo"
 )
 
 func main() {
 	source := yomo.NewSource()
-	source.Connect("Source", "localhost:9000")
+	source.Connect("Source", "unix:///tmp/yomo.sock")
 
 	// 监听socks5端口
 	server, err := net.Listen("tcp", "localhost:8888")
@@ -39,9 +40,9 @@ func main() {
 		}
 
 		// 转发请求
-		go yomo.PipeStream(conn, stream)
+		go utils.PipeStream(conn, stream)
 
 		// 转发响应
-		go yomo.PipeStream(stream, conn)
+		go utils.PipeStream(stream, conn)
 	}
 }

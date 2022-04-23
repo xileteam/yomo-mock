@@ -1,13 +1,14 @@
-package yomo
+package utils
 
 import (
 	"errors"
 	"io"
 	"log"
 	"net"
+	"ys5-mock/yomo"
 )
 
-func PipeStream(src Stream, dst Stream) {
+func PipeStream(src yomo.Stream, dst yomo.Stream) {
 	defer src.Close()
 	defer dst.Close()
 

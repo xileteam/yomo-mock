@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"ys5-mock/utils"
 	"ys5-mock/yomo"
 )
 
@@ -14,15 +15,15 @@ func CrawlerHandler(arg string, stream yomo.Stream) {
 	}
 
 	// 转发请求
-	go yomo.PipeStream(stream, conn)
+	go utils.PipeStream(stream, conn)
 
 	// 转发响应
-	go yomo.PipeStream(conn, stream)
+	go utils.PipeStream(conn, stream)
 }
 
 func main() {
 	sfn := yomo.NewSfn()
 	sfn.WithObserveDataTags(0x0A).
 		WithStreamHandler(0x0B, CrawlerHandler).
-		Connect("SFN", "localhost:9000")
+		Connect("SFN", "unix:///tmp/yomo.sock")
 }
