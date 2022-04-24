@@ -22,11 +22,12 @@ func (s *SfnImpl) Connect(name string, zipperAddr string) error {
 		log.Fatalf("%v", err)
 	}
 
-	listener, err := net.Listen(u.Scheme, u.Path)
+	listener, err := net.Listen("unix", u.Path)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
 	defer listener.Close()
+	log.Println("Started")
 
 	for {
 		conn, err := listener.Accept()

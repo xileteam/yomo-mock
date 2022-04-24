@@ -11,5 +11,5 @@ sh build.sh
 
 ./build/crawler
 
-ALL_PROXY="socks5://127.0.0.1:8888" curl -Lv 'https://baidu.com'
+curl -x socks5://localhost:8888 http://yomo.run
 ```

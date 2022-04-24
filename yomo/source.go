@@ -25,7 +25,7 @@ func (s *SourceImpl) Connect(name string, zipperAddr string) error {
 }
 
 func (s *SourceImpl) NewStream(tag DataTag, arg string) (Stream, error) {
-	conn, err := net.Dial(s.u.Scheme, s.u.Path)
+	conn, err := net.Dial("unix", s.u.Path)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
