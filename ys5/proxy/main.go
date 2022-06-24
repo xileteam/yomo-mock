@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -48,7 +49,7 @@ func main() {
 	}
 	defer source.Close()
 
-	sink, err := yomo.NewSfn(
+	sink, err := yomo.NewSFN(
 		"tcp://localhost:9000",
 		ys5.DATATAG_SINK,
 		sinkHandler,
@@ -57,12 +58,12 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	go func() {
-		if err = sink.Connect(); err != nil {
-			log.Fatalf("%v", err)
-		}
-		sink.Close()
-	}()
+	if err = sink.Connect(); err != nil {
+		log.Fatalf("%v", err)
+	}
+	defer sink.Close()
+
+	go sink.Serve(context.Background())
 
 	// 监听socks5端口
 	server, err := net.Listen("tcp", "localhost:8888")

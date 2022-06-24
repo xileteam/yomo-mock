@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -18,7 +19,7 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	if err = z.Serve(); err != nil {
+	if err = z.Serve(context.Background()); err != nil {
 		log.Fatalf("%v", err)
 	}
 }

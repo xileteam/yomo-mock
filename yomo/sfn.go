@@ -1,6 +1,7 @@
 package yomo
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net"
@@ -8,7 +9,7 @@ import (
 	"os"
 )
 
-func NewSfn(zipperAddr string, tag DataTag, handler Handler) (Sfn, error) {
+func NewSFN(zipperAddr string, tag DataTag, handler Handler) (SFN, error) {
 	u, err := url.Parse(zipperAddr)
 	if err != nil {
 		return nil, err
@@ -28,7 +29,7 @@ func NewSfn(zipperAddr string, tag DataTag, handler Handler) (Sfn, error) {
 		port = "12000"
 	}
 
-	return &SfnTcpImpl{
+	return &sfnTcpImpl{
 		host:       host,
 		port:       port,
 		zipperAddr: u.Host,
@@ -37,7 +38,7 @@ func NewSfn(zipperAddr string, tag DataTag, handler Handler) (Sfn, error) {
 	}, nil
 }
 
-type SfnTcpImpl struct {
+type sfnTcpImpl struct {
 	host       string
 	port       string
 	zipperAddr string
@@ -45,15 +46,16 @@ type SfnTcpImpl struct {
 	handler    Handler
 }
 
-func (s *SfnTcpImpl) Close() error {
+func (s *sfnTcpImpl) Close() error {
 	return nil
 }
 
-func (s *SfnTcpImpl) Connect() error {
+func (s *sfnTcpImpl) Connect() error {
 	conn, err := net.Dial("tcp", s.zipperAddr)
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	h := &handshakeSfn{
 		Addr: s.host + ":" + s.port,
@@ -61,16 +63,17 @@ func (s *SfnTcpImpl) Connect() error {
 	}
 
 	if err = writeHandshake(conn, TYPE_SFN, h); err != nil {
-		conn.Close()
 		return err
 	}
 
 	if err = readHandshakeResponse(conn); err != nil {
-		conn.Close()
 		return err
 	}
-	conn.Close()
 
+	return nil
+}
+
+func (s *sfnTcpImpl) Serve(ctx context.Context) error {
 	listener, err := net.Listen("tcp", "0.0.0.0:"+s.port)
 	if err != nil {
 		return err
@@ -101,7 +104,7 @@ func (s *SfnTcpImpl) Connect() error {
 	}
 }
 
-func (s *SfnTcpImpl) process(src net.Conn, arg []byte) {
+func (s *sfnTcpImpl) process(src net.Conn, arg []byte) {
 	defer src.Close()
 
 	tag, stream, arg := s.handler(src, arg)

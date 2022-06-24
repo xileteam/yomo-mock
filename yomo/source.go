@@ -18,23 +18,23 @@ func NewSource(zipperAddr string) (Source, error) {
 		return nil, errors.New("Currently only support TCP stream")
 	}
 
-	return &SourceTcpImpl{zipperAddr: u.Host}, nil
+	return &sourceTcpImpl{zipperAddr: u.Host}, nil
 }
 
-type SourceTcpImpl struct {
+type sourceTcpImpl struct {
 	zipperAddr string
 }
 
-func (s *SourceTcpImpl) Close() error {
+func (s *sourceTcpImpl) Close() error {
 	return nil
 }
 
-func (s *SourceTcpImpl) Connect() error {
+func (s *sourceTcpImpl) Connect() error {
 	log.Println("Source Started")
 	return nil
 }
 
-func (s *SourceTcpImpl) NewStream(tag DataTag, arg []byte) (io.WriteCloser, error) {
+func (s *sourceTcpImpl) NewStream(tag DataTag, arg []byte) (io.WriteCloser, error) {
 	conn, err := net.Dial("tcp", s.zipperAddr)
 	if err != nil {
 		return nil, err

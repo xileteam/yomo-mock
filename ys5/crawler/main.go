@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -37,7 +38,7 @@ func crawlerHandler(in io.ReadCloser, arg []byte) (yomo.DataTag, io.ReadCloser, 
 }
 
 func main() {
-	sfn, err := yomo.NewSfn(
+	sfn, err := yomo.NewSFN(
 		"tcp://localhost:9000",
 		ys5.DATATAG_CRAWLER,
 		crawlerHandler,
@@ -49,6 +50,7 @@ func main() {
 	if err = sfn.Connect(); err != nil {
 		log.Fatalf("%v", err)
 	}
+	defer sfn.Close()
 
-	sfn.Close()
+	sfn.Serve(context.Background())
 }

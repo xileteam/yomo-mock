@@ -1,6 +1,7 @@
 package yomo
 
 import (
+	"context"
 	"io"
 )
 
@@ -8,22 +9,22 @@ type DataTag int64
 
 type Handler func(in io.ReadCloser, arg []byte) (DataTag, io.ReadCloser, []byte)
 
-type Client interface {
+type Source interface {
 	io.Closer
 
 	Connect() error
-}
-
-type Source interface {
-	Client
 
 	NewStream(tag DataTag, arg []byte) (io.WriteCloser, error)
 }
 
-type Sfn interface {
-	Client
+type SFN interface {
+	io.Closer
+
+	Connect() error
+
+	Serve(ctx context.Context) error
 }
 
-type zipper interface {
-	Serve() error
+type Zipper interface {
+	Serve(ctx context.Context) error
 }

@@ -1,6 +1,7 @@
 package yomo
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log"
@@ -9,7 +10,7 @@ import (
 	"sync"
 )
 
-func NewZipper(addr string) (zipper, error) {
+func NewZipper(addr string) (Zipper, error) {
 	u, err := url.Parse(addr)
 	if err != nil {
 		return nil, err
@@ -31,7 +32,7 @@ type zipperTcpImpl struct {
 	mu   sync.Mutex
 }
 
-func (z *zipperTcpImpl) Serve() error {
+func (z *zipperTcpImpl) Serve(ctx context.Context) error {
 	listener, err := net.Listen("tcp", z.addr)
 	if err != nil {
 		return err
