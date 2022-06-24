@@ -1,5 +1,3 @@
 #!/bin/bash
 
-cd proxy && go build -o ../build/proxy && cd ..
-
-cd crawler && go build -o ../build/crawler && cd ..
+go build -o build/yomo_zipper main.go

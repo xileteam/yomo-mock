@@ -1,58 +1,138 @@
 package yomo
 
 import (
+	"errors"
 	"log"
 	"net"
 	"net/url"
-	"strings"
+	"os"
 )
 
-type SfnImpl struct {
-	observeTag DataTag
-	handler    StreamHandler
-}
-
-func NewSfn() Sfn {
-	return &SfnImpl{}
-}
-
-func (s *SfnImpl) Connect(name string, zipperAddr string) error {
+func NewSfn(zipperAddr string, tag DataTag, handler Handler) (Sfn, error) {
 	u, err := url.Parse(zipperAddr)
 	if err != nil {
-		log.Fatalf("%v", err)
+		return nil, err
 	}
 
-	listener, err := net.Listen("unix", u.Path)
+	if u.Scheme != "tcp" {
+		return nil, errors.New("Currently only support TCP stream")
+	}
+
+	host := os.Getenv("YOMO_SFN_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+
+	port := os.Getenv("YOMO_SFN_PORT")
+	if port == "" {
+		port = "12000"
+	}
+
+	return &SfnTcpImpl{
+		host:       host,
+		port:       port,
+		zipperAddr: u.Host,
+		tag:        tag,
+		handler:    handler,
+	}, nil
+}
+
+type SfnTcpImpl struct {
+	host       string
+	port       string
+	zipperAddr string
+	tag        DataTag
+	handler    Handler
+}
+
+func (s *SfnTcpImpl) Close() error {
+	return nil
+}
+
+func (s *SfnTcpImpl) Connect() error {
+	conn, err := net.Dial("tcp", s.zipperAddr)
 	if err != nil {
-		log.Fatalf("%v", err)
+		return err
+	}
+
+	h := &handshakeSfn{
+		Addr: s.host + ":" + s.port,
+		Tag:  s.tag,
+	}
+
+	if err = writeHandshake(conn, TYPE_SFN, h); err != nil {
+		conn.Close()
+		return err
+	}
+
+	if err = readHandshakeResponse(conn); err != nil {
+		conn.Close()
+		return err
+	}
+	conn.Close()
+
+	listener, err := net.Listen("tcp", "0.0.0.0:"+s.port)
+	if err != nil {
+		return err
 	}
 	defer listener.Close()
-	log.Println("Started")
+	log.Println("SFN Started")
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Fatalf("%v", err)
+			return err
 		}
 
-		go func() {
-			handshake := make([]byte, 32)
-			if _, err := conn.Read(handshake); err != nil {
-				log.Fatalf("%v", err)
-			}
+		if _, err = readHandshakeType(conn); err != nil {
+			return err
+		}
 
-			arg := strings.TrimSpace(string(handshake))
-			s.handler(arg, conn)
-		}()
+		h, err := readHandshake[handshakeStream](conn)
+		if err != nil {
+			return err
+		}
+
+		if err = writeHandshakeResponse(conn, ""); err != nil {
+			return err
+		}
+
+		go s.process(conn, h.Arg)
 	}
 }
 
-func (s *SfnImpl) WithObserveDataTags(tags ...DataTag) Sfn {
-	s.observeTag = tags[0]
-	return s
-}
+func (s *SfnTcpImpl) process(src net.Conn, arg []byte) {
+	defer src.Close()
 
-func (s *SfnImpl) WithStreamHandler(tag DataTag, handler StreamHandler) Sfn {
-	s.handler = handler
-	return s
+	tag, stream, arg := s.handler(src, arg)
+	if stream == nil {
+		return
+	}
+	defer stream.Close()
+
+	conn, err := net.Dial("tcp", s.zipperAddr)
+	if err != nil {
+		log.Printf("%v", err)
+		return
+	}
+	defer conn.Close()
+
+	h := &handshakeStream{
+		Tag: tag,
+		Arg: arg,
+	}
+	if err = writeHandshake(conn, TYPE_STREAM, h); err != nil {
+		log.Printf("%v", err)
+		return
+	}
+
+	if err = readHandshakeResponse(conn); err != nil {
+		log.Printf("%v", err)
+		return
+	}
+
+	if err = PipeStream(stream, conn); err != nil {
+		log.Printf("%v", err)
+		return
+	}
 }

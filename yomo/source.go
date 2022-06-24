@@ -1,46 +1,57 @@
 package yomo
 
 import (
-	"bytes"
+	"errors"
+	"io"
 	"log"
 	"net"
 	"net/url"
 )
 
-type SourceImpl struct {
-	u *url.URL
-}
-
-func NewSource() Source {
-	return &SourceImpl{}
-}
-
-func (s *SourceImpl) Connect(name string, zipperAddr string) error {
+func NewSource(zipperAddr string) (Source, error) {
 	u, err := url.Parse(zipperAddr)
 	if err != nil {
-		log.Fatalf("%v", err)
+		return nil, err
 	}
-	s.u = u
+
+	if u.Scheme != "tcp" {
+		return nil, errors.New("Currently only support TCP stream")
+	}
+
+	return &SourceTcpImpl{zipperAddr: u.Host}, nil
+}
+
+type SourceTcpImpl struct {
+	zipperAddr string
+}
+
+func (s *SourceTcpImpl) Close() error {
 	return nil
 }
 
-func (s *SourceImpl) NewStream(tag DataTag, arg string) (Stream, error) {
-	conn, err := net.Dial("unix", s.u.Path)
+func (s *SourceTcpImpl) Connect() error {
+	log.Println("Source Started")
+	return nil
+}
+
+func (s *SourceTcpImpl) NewStream(tag DataTag, arg []byte) (io.WriteCloser, error) {
+	conn, err := net.Dial("tcp", s.zipperAddr)
 	if err != nil {
-		log.Fatalf("%v", err)
+		return nil, err
 	}
 
-	buf := bytes.NewBufferString(arg)
-	for {
-		if buf.Len() >= 32 {
-			break
-		}
-		buf.WriteString(" ")
+	h := &handshakeStream{
+		Tag: tag,
+		Arg: arg,
 	}
-	handshake := buf.Bytes()
+	if err = writeHandshake(conn, TYPE_STREAM, h); err != nil {
+		conn.Close()
+		return nil, err
+	}
 
-	if _, err := conn.Write(handshake); err != nil {
-		log.Fatalf("%v", err)
+	if err = readHandshakeResponse(conn); err != nil {
+		conn.Close()
+		return nil, err
 	}
 
 	return conn, nil

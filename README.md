@@ -1,15 +1,17 @@
-# ys5-mock
+# yomo-mock
 
-#### Build
+## Build Zipper
+
 ```sh
 sh build.sh
 ```
 
-#### Run
+## Run Zipper
+
 ```sh
-./build/proxy
-
-./build/crawler
-
-curl -x socks5://localhost:8888 http://yomo.run
+./build/yomo_zipper
 ```
+
+## Examples
+
+1. [ys5](ys5/README.md): socks5 proxy

@@ -6,23 +6,24 @@ import (
 
 type DataTag int64
 
-type Stream io.ReadWriteCloser
-
-type StreamHandler func(arg string, stream Stream)
+type Handler func(in io.ReadCloser, arg []byte) (DataTag, io.ReadCloser, []byte)
 
 type Client interface {
-	Connect(name string, zipperAddr string) error
+	io.Closer
+
+	Connect() error
 }
 
 type Source interface {
 	Client
 
-	NewStream(tag DataTag, arg string) (Stream, error)
+	NewStream(tag DataTag, arg []byte) (io.WriteCloser, error)
 }
 
 type Sfn interface {
 	Client
+}
 
-	WithObserveDataTags(tags ...DataTag) Sfn
-	WithStreamHandler(tag DataTag, handler StreamHandler) Sfn
+type zipper interface {
+	Serve() error
 }
