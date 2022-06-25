@@ -1,7 +1,6 @@
 package yomo
 
 import (
-	"context"
 	"errors"
 	"log"
 	"net"
@@ -44,9 +43,13 @@ type sfnTcpImpl struct {
 	zipperAddr string
 	tag        DataTag
 	handler    Handler
+	listener   net.Listener
 }
 
 func (s *sfnTcpImpl) Close() error {
+	if s.listener != nil {
+		s.listener.Close()
+	}
 	return nil
 }
 
@@ -73,13 +76,13 @@ func (s *sfnTcpImpl) Connect() error {
 	return nil
 }
 
-func (s *sfnTcpImpl) Serve(ctx context.Context) error {
+func (s *sfnTcpImpl) Serve() error {
 	listener, err := net.Listen("tcp", "0.0.0.0:"+s.port)
 	if err != nil {
 		return err
 	}
 	defer listener.Close()
-	log.Println("SFN Started")
+	s.listener = listener
 
 	for {
 		conn, err := listener.Accept()

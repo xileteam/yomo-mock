@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -63,7 +62,7 @@ func main() {
 	}
 	defer sink.Close()
 
-	go sink.Serve(context.Background())
+	go sink.Serve()
 
 	// 监听socks5端口
 	server, err := net.Listen("tcp", "localhost:8888")

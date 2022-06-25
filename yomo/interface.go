@@ -1,7 +1,6 @@
 package yomo
 
 import (
-	"context"
 	"io"
 )
 
@@ -22,9 +21,11 @@ type SFN interface {
 
 	Connect() error
 
-	Serve(ctx context.Context) error
+	Serve() error
 }
 
 type Zipper interface {
-	Serve(ctx context.Context) error
+	io.Closer
+
+	Serve() error
 }

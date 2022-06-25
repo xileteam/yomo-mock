@@ -3,7 +3,6 @@ package yomo
 import (
 	"errors"
 	"io"
-	"log"
 	"net"
 	"net/url"
 )
@@ -30,7 +29,6 @@ func (s *sourceTcpImpl) Close() error {
 }
 
 func (s *sourceTcpImpl) Connect() error {
-	log.Println("Source Started")
 	return nil
 }
 

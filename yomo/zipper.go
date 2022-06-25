@@ -1,7 +1,6 @@
 package yomo
 
 import (
-	"context"
 	"errors"
 	"io"
 	"log"
@@ -27,18 +26,26 @@ func NewZipper(addr string) (Zipper, error) {
 }
 
 type zipperTcpImpl struct {
-	addr string
-	sfns map[DataTag]string
-	mu   sync.Mutex
+	listener net.Listener
+	addr     string
+	sfns     map[DataTag]string
+	mu       sync.Mutex
 }
 
-func (z *zipperTcpImpl) Serve(ctx context.Context) error {
+func (z *zipperTcpImpl) Close() error {
+	if z.listener != nil {
+		z.listener.Close()
+	}
+	return nil
+}
+
+func (z *zipperTcpImpl) Serve() error {
 	listener, err := net.Listen("tcp", z.addr)
 	if err != nil {
 		return err
 	}
 	defer listener.Close()
-	log.Println("Zipper Started")
+	z.listener = listener
 
 	for {
 		conn, err := listener.Accept()

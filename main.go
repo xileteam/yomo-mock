@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 
@@ -14,12 +13,14 @@ func main() {
 		port = "9000"
 	}
 
-	z, err := yomo.NewZipper("tcp://0.0.0.0:" + port)
+	zipper, err := yomo.NewZipper("tcp://0.0.0.0:" + port)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
 
-	if err = z.Serve(context.Background()); err != nil {
+	if err = zipper.Serve(); err != nil {
 		log.Fatalf("%v", err)
 	}
+
+	zipper.Close()
 }

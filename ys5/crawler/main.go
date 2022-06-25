@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -52,5 +51,7 @@ func main() {
 	}
 	defer sfn.Close()
 
-	sfn.Serve(context.Background())
+	if err = sfn.Serve(); err != nil {
+		log.Fatalf("%v", err)
+	}
 }
