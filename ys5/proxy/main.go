@@ -18,7 +18,8 @@ func sinkHandler(in io.ReadCloser, arg []byte) (yomo.DataTag, io.ReadCloser, []b
 	var argSink ys5.ArgSink
 
 	if err := json.Unmarshal(arg, &argSink); err != nil {
-		log.Fatalf("%v", err)
+		log.Printf("%v", err)
+		return yomo.TAG_NIL, nil, nil
 	}
 
 	log.Printf("[%s] ++", argSink.Tid)
@@ -33,7 +34,7 @@ func sinkHandler(in io.ReadCloser, arg []byte) (yomo.DataTag, io.ReadCloser, []b
 		conns.Delete(argSink.Tid)
 	}
 
-	return 0, nil, nil
+	return yomo.TAG_NIL, nil, nil
 }
 
 func main() {
@@ -48,9 +49,15 @@ func main() {
 	}
 	defer source.Close()
 
+	gid, err := gonanoid.New()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	sinkTag := yomo.DataTag(gid)
+
 	sink, err := yomo.NewSFN(
 		"tcp://localhost:9000",
-		ys5.DATATAG_SINK,
+		sinkTag,
 		sinkHandler,
 	)
 	if err != nil {
@@ -75,7 +82,7 @@ func main() {
 		conn, err := server.Accept()
 		if err != nil {
 			log.Printf("%v", err)
-			continue
+			break
 		}
 
 		// socks5认证
@@ -101,8 +108,9 @@ func main() {
 		}
 
 		arg := &ys5.ArgCrawler{
-			Tid:  tid,
-			Addr: addr,
+			Tid:     tid,
+			Addr:    addr,
+			SinkTag: sinkTag,
 		}
 
 		buf, err := json.Marshal(arg)
@@ -113,7 +121,7 @@ func main() {
 		}
 
 		// 向zipper创建新流
-		stream, err := source.NewStream(ys5.DATATAG_CRAWLER, buf)
+		stream, err := source.NewStream(ys5.TAG_CRAWLER, buf)
 		if err != nil {
 			log.Printf("%v", err)
 			conn.Close()

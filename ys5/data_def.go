@@ -1,13 +1,15 @@
 package ys5
 
+import "yomo-mock/yomo"
+
 const (
-	DATATAG_CRAWLER = 0x0A
-	DATATAG_SINK    = 0x0B
+	TAG_CRAWLER = "crawler"
 )
 
 type ArgCrawler struct {
-	Tid  string `json:"tid"`
-	Addr string `json:"addr"`
+	Tid     string       `json:"tid"`
+	Addr    string       `json:"addr"`
+	SinkTag yomo.DataTag `json:"sink_tag"`
 }
 
 type ArgSink struct {

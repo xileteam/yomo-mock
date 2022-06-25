@@ -4,7 +4,11 @@ import (
 	"io"
 )
 
-type DataTag int64
+type DataTag string
+
+const (
+	TAG_NIL DataTag = ""
+)
 
 type Handler func(in io.ReadCloser, arg []byte) (DataTag, io.ReadCloser, []byte)
 

@@ -11,5 +11,5 @@ sh build.sh
 
 YOMO_SFN_PORT=12001 ./build/ys5_crawler
 
-curl -x socks5://localhost:8888 http://yomo.run
+curl -L -x socks5://localhost:8888 http://yomo.run
 ```

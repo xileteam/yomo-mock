@@ -87,6 +87,9 @@ func (s *sfnTcpImpl) Serve() error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return nil
+			}
 			return err
 		}
 
@@ -111,10 +114,11 @@ func (s *sfnTcpImpl) process(src net.Conn, arg []byte) {
 	defer src.Close()
 
 	tag, stream, arg := s.handler(src, arg)
-	if stream == nil {
+	defer stream.Close()
+
+	if tag == TAG_NIL || stream == nil {
 		return
 	}
-	defer stream.Close()
 
 	conn, err := net.Dial("tcp", s.zipperAddr)
 	if err != nil {

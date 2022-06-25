@@ -13,14 +13,14 @@ func crawlerHandler(in io.ReadCloser, arg []byte) (yomo.DataTag, io.ReadCloser, 
 	var argCrawler ys5.ArgCrawler
 	if err := json.Unmarshal(arg, &argCrawler); err != nil {
 		log.Printf("%v", err)
-		return 0, nil, nil
+		return yomo.TAG_NIL, nil, nil
 	}
 
 	// 爬虫向外部建立连接
 	conn, err := net.Dial("tcp", argCrawler.Addr)
 	if err != nil {
 		log.Printf("%v", err)
-		return 0, nil, nil
+		return yomo.TAG_NIL, nil, nil
 	}
 	log.Printf("[%s] ++ %s", argCrawler.Tid, argCrawler.Addr)
 
@@ -30,16 +30,16 @@ func crawlerHandler(in io.ReadCloser, arg []byte) (yomo.DataTag, io.ReadCloser, 
 	argSink := &ys5.ArgSink{Tid: argCrawler.Tid}
 	if arg, err = json.Marshal(argSink); err != nil {
 		log.Printf("%v", err)
-		return 0, nil, nil
+		return yomo.TAG_NIL, nil, nil
 	}
 
-	return ys5.DATATAG_SINK, conn, arg
+	return argCrawler.SinkTag, conn, arg
 }
 
 func main() {
 	sfn, err := yomo.NewSFN(
 		"tcp://localhost:9000",
-		ys5.DATATAG_CRAWLER,
+		ys5.TAG_CRAWLER,
 		crawlerHandler,
 	)
 	if err != nil {

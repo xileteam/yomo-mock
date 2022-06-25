@@ -50,6 +50,9 @@ func (z *zipperTcpImpl) Serve() error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return nil
+			}
 			return err
 		}
 
