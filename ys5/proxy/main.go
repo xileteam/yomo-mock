@@ -55,21 +55,17 @@ func main() {
 	}
 	sinkTag := yomo.DataTag(gid)
 
-	sink, err := yomo.NewSFN(
-		"tcp://localhost:9000",
-		sinkTag,
-		sinkHandler,
-	)
+	sink, err := yomo.NewStreamSFN("tcp://localhost:9000")
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
 
-	if err = sink.Connect(); err != nil {
+	if err = sink.Connect(sinkTag); err != nil {
 		log.Fatalf("%v", err)
 	}
 	defer sink.Close()
 
-	go sink.Serve()
+	go sink.ServeStream(sinkHandler)
 
 	// 监听socks5端口
 	server, err := net.Listen("tcp", "localhost:8888")

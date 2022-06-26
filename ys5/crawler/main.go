@@ -37,21 +37,17 @@ func crawlerHandler(in io.ReadCloser, arg []byte) (yomo.DataTag, io.ReadCloser, 
 }
 
 func main() {
-	sfn, err := yomo.NewSFN(
-		"tcp://localhost:9000",
-		ys5.TAG_CRAWLER,
-		crawlerHandler,
-	)
+	sfn, err := yomo.NewStreamSFN("tcp://localhost:9000")
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
 
-	if err = sfn.Connect(); err != nil {
+	if err = sfn.Connect(ys5.TAG_CRAWLER); err != nil {
 		log.Fatalf("%v", err)
 	}
 	defer sfn.Close()
 
-	if err = sfn.Serve(); err != nil {
+	if err = sfn.ServeStream(crawlerHandler); err != nil {
 		log.Fatalf("%v", err)
 	}
 }

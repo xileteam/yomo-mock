@@ -16,11 +16,9 @@ func intToBytes(n int) []byte {
 }
 
 func bytesToInt(b []byte) int {
-	bytesBuffer := bytes.NewBuffer(b)
-
 	var x int32
+	bytesBuffer := bytes.NewBuffer(b)
 	binary.Read(bytesBuffer, binary.BigEndian, &x)
-
 	return int(x)
 }
 

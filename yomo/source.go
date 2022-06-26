@@ -21,14 +21,46 @@ func NewSource(zipperAddr string) (Source, error) {
 }
 
 type sourceTcpImpl struct {
-	zipperAddr string
+	zipperAddr   string
+	datagramConn net.Conn
 }
 
 func (s *sourceTcpImpl) Close() error {
+	if s.datagramConn != nil {
+		s.datagramConn.Close()
+	}
 	return nil
 }
 
+func (s *sourceTcpImpl) SendDatagram(tag DataTag, data []byte) error {
+	return WriteFrame(s.datagramConn, &DataFrame{
+		Tag:  tag,
+		Data: data,
+	})
+}
+
 func (s *sourceTcpImpl) Connect() error {
+	conn, err := net.Dial("tcp", s.zipperAddr)
+	if err != nil {
+		return err
+	}
+
+	h := &HandshakeFrame{ClientType: TYPE_SOURCE}
+	if err = WriteFrame(conn, h); err != nil {
+		conn.Close()
+		return err
+	}
+	s.datagramConn = conn
+
+	resp, err := ReadFrame[HandshakeResponseFrame](conn)
+	if err != nil {
+		conn.Close()
+		return err
+	} else if resp.Error != "" {
+		conn.Close()
+		return errors.New(resp.Error)
+	}
+
 	return nil
 }
 
@@ -38,18 +70,23 @@ func (s *sourceTcpImpl) NewStream(tag DataTag, arg []byte) (io.WriteCloser, erro
 		return nil, err
 	}
 
-	h := &handshakeStream{
-		Tag: tag,
-		Arg: arg,
+	h := &HandshakeFrame{
+		ClientType: TYPE_STREAM,
+		Tag:        tag,
+		StreamArg:  arg,
 	}
-	if err = writeHandshake(conn, TYPE_STREAM, h); err != nil {
+	if err = WriteFrame(conn, h); err != nil {
 		conn.Close()
 		return nil, err
 	}
 
-	if err = readHandshakeResponse(conn); err != nil {
+	resp, err := ReadFrame[HandshakeResponseFrame](conn)
+	if err != nil {
 		conn.Close()
 		return nil, err
+	} else if resp.Error != "" {
+		conn.Close()
+		return nil, errors.New(resp.Error)
 	}
 
 	return conn, nil

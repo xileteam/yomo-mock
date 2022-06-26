@@ -10,22 +10,34 @@ const (
 	TAG_NIL DataTag = ""
 )
 
-type Handler func(in io.ReadCloser, arg []byte) (DataTag, io.ReadCloser, []byte)
+type DatagramHandler func(req []byte) (DataTag, []byte)
+
+type StreamHandler func(in io.ReadCloser, arg []byte) (DataTag, io.ReadCloser, []byte)
 
 type Source interface {
 	io.Closer
 
 	Connect() error
 
+	SendDatagram(tag DataTag, data []byte) error
+
 	NewStream(tag DataTag, arg []byte) (io.WriteCloser, error)
 }
 
-type SFN interface {
+type DatagramSFN interface {
 	io.Closer
 
-	Connect() error
+	Connect(tag DataTag) error
 
-	Serve() error
+	ServeDatagram(handler DatagramHandler) error
+}
+
+type StreamSFN interface {
+	io.Closer
+
+	Connect(tag DataTag) error
+
+	ServeStream(handler StreamHandler) error
 }
 
 type Zipper interface {

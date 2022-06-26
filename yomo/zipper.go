@@ -21,14 +21,14 @@ func NewZipper(addr string) (Zipper, error) {
 
 	return &zipperTcpImpl{
 		addr: u.Host,
-		sfns: make(map[DataTag]string),
+		sfns: make(map[DataTag]*Connection),
 	}, nil
 }
 
 type zipperTcpImpl struct {
 	listener net.Listener
 	addr     string
-	sfns     map[DataTag]string
+	sfns     map[DataTag]*Connection
 	mu       sync.Mutex
 }
 
@@ -63,68 +63,91 @@ func (z *zipperTcpImpl) Serve() error {
 func (z *zipperTcpImpl) processConn(conn net.Conn) {
 	defer conn.Close()
 
-	t, err := readHandshakeType(conn)
+	h, err := ReadFrame[HandshakeFrame](conn)
 	if err != nil {
 		log.Printf("%v", err)
 		return
 	}
 
-	switch t {
+	if err = WriteFrame(conn, &HandshakeResponseFrame{Error: ""}); err != nil {
+		log.Printf("%v", err)
+		return
+	}
+
+	switch h.ClientType {
+	case TYPE_SOURCE:
+		if err = z.processDatagram(conn); err != nil {
+			log.Printf("%v", err)
+		}
 	case TYPE_STREAM:
-		h, err := readHandshake[handshakeStream](conn)
-		if err != nil {
+		if err = z.processStream(conn, h.Tag, h.StreamArg); err != nil {
 			log.Printf("%v", err)
-			return
-		}
-
-		if err = writeHandshakeResponse(conn, ""); err != nil {
-			log.Printf("%v", err)
-			return
-		}
-
-		if err = z.processStream(conn, h.Tag, h.Arg); err != nil {
-			log.Printf("%v", err)
-			return
 		}
 	case TYPE_SFN:
-		h, err := readHandshake[handshakeSfn](conn)
+		z.mu.Lock()
+		z.sfns[h.Tag] = &Connection{
+			writer: conn,
+			addr:   h.SFNAddr,
+		}
+		z.mu.Unlock()
+
+		if err = z.processDatagram(conn); err != nil {
+			log.Printf("%v", err)
+		}
+	default:
+		log.Printf("Unsupported handshake client type: %v", h.ClientType)
+	}
+}
+
+func (z *zipperTcpImpl) processDatagram(reader io.Reader) error {
+	for {
+		f, err := ReadFrame[DataFrame](reader)
 		if err != nil {
-			log.Printf("%v", err)
-			return
+			if err == io.EOF {
+				return nil
+			}
+			return err
 		}
-
-		if err = writeHandshakeResponse(conn, ""); err != nil {
-			log.Printf("%v", err)
-			return
-		}
-
-		conn.Close()
 
 		z.mu.Lock()
-		z.sfns[h.Tag] = h.Addr
+		sfnConn, ok := z.sfns[f.Tag]
 		z.mu.Unlock()
-	default:
-		log.Printf("Unsupported client type: %v", t)
-		return
+
+		if ok {
+			if err = WriteFrame(sfnConn.writer, f); err != nil {
+				if errors.Is(err, net.ErrClosed) {
+					z.mu.Lock()
+					delete(z.sfns, f.Tag)
+					z.mu.Unlock()
+					return nil
+				}
+				return err
+			}
+		}
 	}
 }
 
 func (z *zipperTcpImpl) processStream(stream io.ReadCloser, tag DataTag, arg []byte) error {
 	z.mu.Lock()
-	sfnAddr, ok := z.sfns[tag]
+	sfnConn, ok := z.sfns[tag]
 	z.mu.Unlock()
 	if !ok {
 		return errors.New("no observed sfn")
 	}
 
-	conn, err := net.Dial("tcp", sfnAddr)
+	conn, err := net.Dial("tcp", sfnConn.addr)
 	if err != nil {
+		z.mu.Lock()
+		delete(z.sfns, tag)
+		z.mu.Unlock()
 		return err
 	}
-	defer conn.Close()
 
-	h := &handshakeStream{Arg: arg}
-	if err = writeHandshake(conn, TYPE_STREAM, h); err != nil {
+	h := &HandshakeFrame{
+		ClientType: TYPE_STREAM,
+		StreamArg:  arg,
+	}
+	if err = WriteFrame(conn, h); err != nil {
 		return err
 	}
 
